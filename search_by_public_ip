@@ -1,0 +1,55 @@
+from __future__ import print_function
+import oci
+import sys
+import json
+
+config = oci.config.from_file(
+    '_PATH_TO_OCI_CLIENT_CONFIG_FILE',
+    'DEFAULT'
+)
+tenancy_id = config['tenancy']
+scope = config['region']
+
+identity = oci.identity.IdentityClient(config)
+compute = oci.core.ComputeClient(config)
+network = oci.core.VirtualNetworkClient(config)
+
+'''
+ip_address value REPLACE by the public_ip that you whant to search.
+'''
+addr_details = oci.core.models.GetPublicIpByIpAddressDetails(
+    ip_address='1.2.3.4'
+
+)
+'''
+Retrieve information based on public IP addresses.
+Phase 1 - retrieve information about public ip addressing.  Observe some attributes can guide you to correct association:
+display_name;
+assigned_entity_type
+Examples: 
+- if is an compute instance the name of compute instance will be the displayname
+- if  is an natgateway the attribute - "assigned_entity_type" will recieve the value "NAT_GATEWAY"
+- 
+
+'''
+rsp = network.get_public_ip_by_ip_address(get_public_ip_by_ip_address_details=addr_details)
+print(rsp.data)
+public_ip_info_str = str(rsp.data)
+public_ip_info = json.loads(public_ip_info_str)
+print('PUBLIC_IP_INFO', '\n',  public_ip_info['display_name'])
+
+if public_ip_info['assigned_entity_type'] == 'PRIVATE_IP':
+    '''
+    Here continues just to print more info regarding private IP
+    '''
+    priv_ip_info = network.get_private_ip(public_ip_info['private_ip_id'])
+    print(priv_ip_info.data)
+    private_ip_info_str = str(priv_ip_info.data)
+    private_ip_info = json.loads(private_ip_info_str)
+    '''
+    Last portion will display iformation about VNIC.
+    '''
+    print('VNIC_ID: ', private_ip_info['vnic_id'])
+    vnic_info = network.get_vnic( private_ip_info['vnic_id'])
+    print(vnic_info.data)
+
